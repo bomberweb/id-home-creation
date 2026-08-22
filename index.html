@@ -6,12 +6,32 @@
   <title>Simulateur de rénovation — ID'Home Création</title>
   <meta name="description" content="Estimez votre projet de rénovation en quelques minutes : type d'habitation, pièces, niveau de finition. Un outil ID'Home Création." />
   <style>
-    html, body { margin: 0; padding: 0; min-height: 100%; }
+    html, body { margin: 0; padding: 0; min-height: 100%; font-family: sans-serif; }
     #root { min-height: 100vh; }
+    #ihc-fallback { display:none; max-width: 480px; margin: 80px auto; padding: 20px; color:#57503f; font-size: 14px; line-height:1.6; }
   </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.3.1",
+      "react-dom": "https://esm.sh/react-dom@18.3.1",
+      "react-dom/client": "https://esm.sh/react-dom@18.3.1/client"
+    }
+  }
+  </script>
 </head>
 <body>
   <div id="root"></div>
+  <div id="ihc-fallback">
+    Le site met plus de temps que prévu à s'afficher. Ouvrez la console du navigateur (clic droit → Inspecter → Console) pour voir le message d'erreur exact.
+  </div>
+  <script>
+    window.setTimeout(function () {
+      if (!document.getElementById("root").hasChildNodes()) {
+        document.getElementById("ihc-fallback").style.display = "block";
+      }
+    }, 4000);
+  </script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>

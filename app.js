@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from "https://esm.sh/react@18.3.1";
 import ReactDOM from "https://esm.sh/react-dom@18.3.1/client";
-import { ArrowRight, ArrowLeft, Check, Lock, Home as HomeIcon, Phone, Mail, MapPin, LogOut, Plus, Trash2, X, RefreshCw, ClipboardCopy, Sparkles, ShieldCheck, Building2, KeyRound, } from "https://esm.sh/lucide-react@0.383.0?external=react";
+import { ArrowRight, ArrowLeft, Check, Lock, Home as HomeIcon, Phone, Mail, MapPin, LogOut, Plus, Trash2, X, RefreshCw, ClipboardCopy, Sparkles, ShieldCheck, Building2, KeyRound, } from "https://esm.sh/lucide-react@0.383.0?deps=react@18.3.1";
 /* =========================================================================
    CONFIGURATION SUPABASE — à compléter avant la mise en ligne
    Récupérez ces deux valeurs dans Supabase : Project Settings > API
    ========================================================================= */
 const SUPABASE_URL = "https://iiyqzeanhpitlwbbqjbp.supabase.co"; // <-- remplacez par votre Project URL
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlpeXF6ZWFuaHBpdGx3YmJxamJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MDEyODQsImV4cCI6MjEwMjk3NzI4NH0.5iebi5C-cYHpvU50stAKcgX2sWhBA3bkDvYNdBUHBX4"; // <-- remplacez par votre clé "anon public"
+const SUPABASE_ANON_KEY = "sb_publishable_ktgPxR54ZFBnDeO-l3nX3A_JIbe_FJa"; // <-- remplacez par votre clé "anon public"
 /* =========================================================================
    ID'HOME CRÉATION — Simulateur de projet de rénovation
    Site statique autonome (HTML + JS, sans build). Persistance partagée via Supabase.
