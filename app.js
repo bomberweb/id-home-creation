@@ -1248,6 +1248,7 @@ function AdminSettings({ config, setConfig, setPasswordHash, flashToast }) {
     const [confirmReset, setConfirmReset] = useState(false);
     const email = config.emailSettings || {};
     const [testState, setTestState] = useState("idle"); // idle | sending | ok | error
+    const [testDetail, setTestDetail] = useState("");
     async function savePwd() {
         if (pwd.length < 6) {
             flashToast("Le code doit contenir au moins 6 caractères");
@@ -1272,6 +1273,7 @@ function AdminSettings({ config, setConfig, setPasswordHash, flashToast }) {
     }
     async function testEmail() {
         setTestState("sending");
+        setTestDetail("");
         const result = await sendLeadEmail(email, {
             to_email: email.toEmail || "",
             prenom: "Test", nom: "Simulateur", telephone: "0600000000", email: "test@id-homecreation.com",
@@ -1281,10 +1283,16 @@ function AdminSettings({ config, setConfig, setPasswordHash, flashToast }) {
             date: new Date().toLocaleString("fr-FR"),
         });
         setTestState(result.ok ? "ok" : "error");
-        if (result.ok)
+        if (result.ok) {
             flashToast("Email de test envoyé avec succès");
-        else
-            flashToast(result.reason === "not_configured" ? "Complétez les 3 champs EmailJS avant de tester" : "Échec de l'envoi — vérifiez vos identifiants EmailJS");
+        }
+        else if (result.reason === "not_configured") {
+            flashToast("Complétez les 3 champs EmailJS avant de tester");
+        }
+        else {
+            flashToast("Échec de l'envoi — voir le détail ci-dessous");
+            setTestDetail(result.reason === "network_error" ? "Impossible de joindre EmailJS (problème réseau ou domaine bloqué)." : (result.detail || "Erreur inconnue renvoyée par EmailJS."));
+        }
     }
     return (React.createElement("div", null,
         React.createElement("div", { className: "ihc-panel" },
@@ -1324,7 +1332,8 @@ function AdminSettings({ config, setConfig, setPasswordHash, flashToast }) {
             testState === "ok" && React.createElement("span", { style: { marginLeft: 12, fontSize: 12.5, color: "#8fae7a" } },
                 React.createElement(Check, { size: 13, style: { verticalAlign: -2 } }),
                 " Re\u00E7u c\u00F4t\u00E9 EmailJS"),
-            testState === "error" && React.createElement("span", { style: { marginLeft: 12, fontSize: 12.5, color: "#e08a6f" } }, "\u00C9chec \u2014 v\u00E9rifiez les identifiants")),
+            testState === "error" && React.createElement("span", { style: { marginLeft: 12, fontSize: 12.5, color: "#e08a6f" } }, "\u00C9chec de l'envoi"),
+            testState === "error" && testDetail && (React.createElement("div", { style: { marginTop: 10, fontSize: 12.5, color: "#e08a6f", background: "rgba(224,138,111,0.1)", border: "1px solid rgba(224,138,111,0.3)", borderRadius: 6, padding: "10px 12px", fontFamily: "'IBM Plex Mono', monospace" } }, testDetail))),
         React.createElement("div", { className: "ihc-panel" },
             React.createElement("h3", null, "R\u00E9initialisation globale"),
             React.createElement("div", { style: { fontSize: 12.5, color: "rgba(239,231,214,0.55)", marginBottom: 12 } }, "Restaure les types de pi\u00E8ces, postes et niveaux de finition par d\u00E9faut. Les demandes de rappel re\u00E7ues et les r\u00E9glages email ne sont pas affect\u00E9s."),
