@@ -280,6 +280,11 @@ const INACTIVITY_LIMIT_MS = 10 * 60 * 1000; // 10 min
 function uid(p = "id") { return p + "_" + Math.random().toString(36).slice(2, 9); }
 function euro(n) { return Math.round(n).toLocaleString("fr-FR") + " €"; }
 function clamp(n, min, max) { return Math.min(Math.max(n, min), max); }
+function buildListHtml(items) {
+    if (!items || !items.length)
+        return "<em>Aucun</em>";
+    return `<ul style="margin:0;padding-left:18px;">${items.map((i) => `<li>${i}</li>`).join("")}</ul>`;
+}
 async function sha256Hex(text) {
     const enc = new TextEncoder().encode(text);
     const buf = await crypto.subtle.digest("SHA-256", enc);
@@ -615,12 +620,20 @@ export default function App() {
         flashToast(inserted ? "Demande de rappel enregistrée" : "Demande enregistrée localement — vérifiez la configuration Supabase");
         const habitationLabel = config.habitationTypes.find((h) => h.id === habitationType)?.label || habitationType || "—";
         const tierLabel = config.tiers.find((t) => t.id === tierId)?.label || tierId || "—";
+        const piecesLines = leadData.pieces.map((p) => {
+            const info = config.pieceTypes.find((pt) => pt.id === p.id);
+            const label = info ? info.label : p.id;
+            return `${label} — ${p.count} pièce(s), ${p.surface || 0} m²`;
+        });
+        const postesLines = (estimate?.rows || []).map((r) => `${r.label} — ${euro(r.lineTotal)}`);
         const result = await sendLeadEmail(config.emailSettings, {
             to_email: config.emailSettings?.toEmail || "",
             prenom: lead.prenom, nom: lead.nom, telephone: lead.telephone, email: lead.email,
             adresse: lead.adresse, creneau: lead.creneau, message: lead.message,
             habitation: habitationLabel, niveau: tierLabel,
             budget_bas: euro(lead.low), budget_haut: euro(lead.high),
+            pieces_detail: buildListHtml(piecesLines),
+            postes_detail: buildListHtml(postesLines),
             date: new Date(lead.date).toLocaleString("fr-FR"),
         });
         if (result.ok)
@@ -1280,6 +1293,8 @@ function AdminSettings({ config, setConfig, setPasswordHash, flashToast }) {
             adresse: "1570 Avenue des Platanes, 34970 Lattes", creneau: "Peu importe",
             message: "Ceci est un envoi de test depuis l'espace professionnel.",
             habitation: "Appartement", niveau: "Kilimanjaro", budget_bas: "12 000 €", budget_haut: "16 000 €",
+            pieces_detail: buildListHtml(["Cuisine — 1 pièce, 10 m²", "Salle de bain — 1 pièce, 6 m²"]),
+            postes_detail: buildListHtml(["Peinture & finitions murs/plafonds — 2 700 €", "Revêtement de sol — 3 800 €", "Cuisine équipée — 9 000 €"]),
             date: new Date().toLocaleString("fr-FR"),
         });
         setTestState(result.ok ? "ok" : "error");
