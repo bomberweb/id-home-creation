@@ -1040,127 +1040,130 @@ function DiscoveryView({ stepIndex, answers, onAnswer, onNext, onPrev }) {
                         " ",
                         React.createElement(ArrowRight, { size: 16 })))))));
 }
-const { config, step, setStep, habitationType, setHabitationType, pieceSel, setPieceSel, tierId, setTierId, posteSel, setPosteSel, applicablePostes, selectedPieceIds, onFinish, onAbort, } = props;
-const labels = ["Habitation", "Pièces", "Finition", "Postes"];
-const helpWhenBlocked = [
-    "Choisissez un type d'habitation pour continuer.",
-    "Ajoutez au moins une pièce pour continuer.",
-    "Choisissez un niveau de finition pour continuer.",
-    "",
-];
-const canNext = [
-    !!habitationType,
-    selectedPieceIds().length > 0,
-    !!tierId,
-    true,
-];
-useEffect(() => {
-    const el = document.getElementById("ihc-wizard-top");
-    if (el)
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-}, [step]);
-function next() {
-    if (step === labels.length - 1) {
-        onFinish();
-        return;
+/* ================================ WIZARD =================================== */
+function WizardView(props) {
+    const { config, step, setStep, habitationType, setHabitationType, pieceSel, setPieceSel, tierId, setTierId, posteSel, setPosteSel, applicablePostes, selectedPieceIds, onFinish, onAbort, } = props;
+    const labels = ["Habitation", "Pièces", "Finition", "Postes"];
+    const helpWhenBlocked = [
+        "Choisissez un type d'habitation pour continuer.",
+        "Ajoutez au moins une pièce pour continuer.",
+        "Choisissez un niveau de finition pour continuer.",
+        "",
+    ];
+    const canNext = [
+        !!habitationType,
+        selectedPieceIds().length > 0,
+        !!tierId,
+        true,
+    ];
+    useEffect(() => {
+        const el = document.getElementById("ihc-wizard-top");
+        if (el)
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, [step]);
+    function next() {
+        if (step === labels.length - 1) {
+            onFinish();
+            return;
+        }
+        setStep((s) => clamp(s + 1, 0, labels.length - 1));
     }
-    setStep((s) => clamp(s + 1, 0, labels.length - 1));
-}
-function prev() {
-    if (step === 0) {
-        onAbort();
-        return;
+    function prev() {
+        if (step === 0) {
+            onAbort();
+            return;
+        }
+        setStep((s) => clamp(s - 1, 0, labels.length - 1));
     }
-    setStep((s) => clamp(s - 1, 0, labels.length - 1));
+    function updatePiece(id, patch) {
+        setPieceSel((prevSel) => {
+            const current = prevSel[id] || { count: 0, surface: 0 };
+            const merged = { ...current, ...patch };
+            return { ...prevSel, [id]: merged };
+        });
+    }
+    function selectAllPostes(value) {
+        const next = {};
+        applicablePostes().forEach((p) => { next[p.id] = value; });
+        setPosteSel((s) => ({ ...s, ...next }));
+    }
+    return (React.createElement("div", { className: "ihc-shell" },
+        React.createElement("div", { id: "ihc-wizard-top", style: { paddingTop: 8, scrollMarginTop: 20 } },
+            React.createElement("div", { className: "ihc-step-counter" },
+                "\u00C9tape ",
+                step + 1,
+                " / ",
+                labels.length,
+                " \u2014 ",
+                labels[step]),
+            React.createElement(AscentProgress, { labels: labels, currentIndex: step }),
+            React.createElement("div", { className: "ihc-card" },
+                step === 0 && (React.createElement(React.Fragment, null,
+                    React.createElement("h2", { className: "ihc-q-title" }, "Quel type d'habitation souhaitez-vous r\u00E9nover ?"),
+                    React.createElement("p", { className: "ihc-q-sub" }, "Cela nous aide \u00E0 calibrer les postes de travaux pertinents."),
+                    React.createElement("div", { className: "ihc-grid3" }, config.habitationTypes.map((h) => (React.createElement("button", { key: h.id, className: "ihc-opt" + (habitationType === h.id ? " selected" : ""), onClick: () => setHabitationType(h.id), "aria-pressed": habitationType === h.id },
+                        React.createElement(Building2, { size: 22, color: habitationType === h.id ? "var(--clay)" : "var(--ink-soft)" }),
+                        React.createElement("span", { className: "ihc-opt-label" }, h.label))))))),
+                step === 1 && (React.createElement(React.Fragment, null,
+                    React.createElement("h2", { className: "ihc-q-title" }, "Quelles pi\u00E8ces souhaitez-vous r\u00E9nover ?"),
+                    React.createElement("p", { className: "ihc-q-sub" }, "Indiquez le nombre de pi\u00E8ces de chaque type et leur surface totale approximative (m\u00B2) \u2014 une valeur par d\u00E9faut est propos\u00E9e, ajustez-la si besoin."),
+                    React.createElement("div", null, config.pieceTypes.map((p) => {
+                        const val = pieceSel[p.id] || { count: 0, surface: 0 };
+                        return (React.createElement("div", { key: p.id, className: "ihc-piece-row" },
+                            React.createElement("div", { className: "ihc-piece-name" }, p.label),
+                            React.createElement("div", { className: "ihc-stepper" },
+                                React.createElement("button", { type: "button", "aria-label": `Retirer une pièce ${p.label}`, onClick: () => {
+                                        const nc = clamp((val.count || 0) - 1, 0, 20);
+                                        updatePiece(p.id, { count: nc, surface: nc === 0 ? 0 : Math.max(1, val.surface || nc * p.avgSurface) });
+                                    } }, "\u2013"),
+                                React.createElement("span", { "aria-live": "polite" }, val.count || 0),
+                                React.createElement("button", { type: "button", "aria-label": `Ajouter une pièce ${p.label}`, onClick: () => {
+                                        const nc = clamp((val.count || 0) + 1, 0, 20);
+                                        const defaultSurface = val.surface ? val.surface + p.avgSurface : nc * p.avgSurface;
+                                        updatePiece(p.id, { count: nc, surface: Math.max(1, defaultSurface) });
+                                    } }, "+")),
+                            React.createElement("input", { className: "ihc-surf-input", type: "number", min: "1", step: "1", disabled: !val.count, placeholder: "Surface m\u00B2", "aria-label": `Surface totale pour ${p.label}`, value: val.count ? (val.surface ?? "") : "", onChange: (e) => updatePiece(p.id, { surface: Math.max(0, Number(e.target.value)) }), onBlur: (e) => { if (val.count && !Number(e.target.value))
+                                    updatePiece(p.id, { surface: p.avgSurface * val.count }); } })));
+                    })))),
+                step === 2 && (React.createElement(React.Fragment, null,
+                    React.createElement("h2", { className: "ihc-q-title" }, "Quel niveau de finition visez-vous ?"),
+                    React.createElement("p", { className: "ihc-q-sub" }, "Trois altitudes, trois niveaux de gamme \u2014 appliqu\u00E9s \u00E0 l'ensemble des postes chiffr\u00E9s."),
+                    React.createElement("div", { className: "ihc-tier-grid" }, config.tiers.map((t) => (React.createElement("button", { key: t.id, className: "ihc-tier" + (tierId === t.id ? " selected" : ""), onClick: () => setTierId(t.id), "aria-pressed": tierId === t.id },
+                        React.createElement("div", { className: "ihc-tier-alt" }, t.altitude),
+                        React.createElement("div", { className: "ihc-tier-mtn" },
+                            React.createElement(MountainGlyph, { peak: t.peak, active: tierId === t.id })),
+                        React.createElement("div", { className: "ihc-tier-name" }, t.label),
+                        React.createElement("div", { className: "ihc-tier-tag" }, t.tagline),
+                        React.createElement("div", { className: "ihc-tier-desc" }, t.description))))))),
+                step === 3 && (React.createElement(React.Fragment, null,
+                    React.createElement("h2", { className: "ihc-q-title" }, "Quels postes souhaitez-vous chiffrer ?"),
+                    React.createElement("p", { className: "ihc-q-sub" }, "Pr\u00E9-s\u00E9lectionn\u00E9s selon vos pi\u00E8ces \u2014 d\u00E9cochez ce qui ne vous concerne pas."),
+                    applicablePostes().length > 0 && (React.createElement("div", { className: "ihc-select-all-row" },
+                        React.createElement("button", { type: "button", onClick: () => selectAllPostes(true) }, "Tout s\u00E9lectionner"),
+                        React.createElement("span", { style: { color: "var(--line)" } }, "\u00B7"),
+                        React.createElement("button", { type: "button", onClick: () => selectAllPostes(false) }, "Tout d\u00E9s\u00E9lectionner"))),
+                    React.createElement("div", null,
+                        applicablePostes().map((poste) => {
+                            const on = posteSel[poste.id] !== false;
+                            return (React.createElement("div", { key: poste.id, className: "ihc-poste-row" },
+                                React.createElement("button", { type: "button", className: "ihc-check" + (on ? " on" : ""), onClick: () => setPosteSel((s) => ({ ...s, [poste.id]: !on })), "aria-pressed": on, "aria-label": poste.label }, on && React.createElement(Check, { size: 13 })),
+                                React.createElement("div", null,
+                                    React.createElement("div", { className: "ihc-poste-label" }, poste.label),
+                                    React.createElement("div", { className: "ihc-poste-meta" }, UNIT_LABEL[poste.unit]))));
+                        }),
+                        applicablePostes().length === 0 && React.createElement("div", { style: { fontSize: 13, color: "var(--ink-soft)" } }, "S\u00E9lectionnez au moins une pi\u00E8ce \u00E0 l'\u00E9tape pr\u00E9c\u00E9dente."))))),
+            React.createElement("div", { className: "ihc-nav-wrap" },
+                React.createElement("div", { className: "ihc-nav" },
+                    React.createElement("button", { className: "btn btn-ghost", onClick: prev },
+                        React.createElement(ArrowLeft, { size: 16 }),
+                        " ",
+                        step === 0 ? "Annuler" : "Précédent"),
+                    React.createElement("button", { className: "btn btn-primary", disabled: !canNext[step], onClick: next, title: !canNext[step] ? helpWhenBlocked[step] : undefined },
+                        step === labels.length - 1 ? "Voir mon estimation" : "Suivant",
+                        " ",
+                        React.createElement(ArrowRight, { size: 16 }))),
+                !canNext[step] && helpWhenBlocked[step] && (React.createElement("div", { style: { textAlign: "right", fontSize: 11.5, color: "var(--ink-soft)", marginTop: 6 } }, helpWhenBlocked[step]))))));
 }
-function updatePiece(id, patch) {
-    setPieceSel((prevSel) => {
-        const current = prevSel[id] || { count: 0, surface: 0 };
-        const merged = { ...current, ...patch };
-        return { ...prevSel, [id]: merged };
-    });
-}
-function selectAllPostes(value) {
-    const next = {};
-    applicablePostes().forEach((p) => { next[p.id] = value; });
-    setPosteSel((s) => ({ ...s, ...next }));
-}
-return (React.createElement("div", { className: "ihc-shell" },
-    React.createElement("div", { id: "ihc-wizard-top", style: { paddingTop: 8, scrollMarginTop: 20 } },
-        React.createElement("div", { className: "ihc-step-counter" },
-            "\u00C9tape ",
-            step + 1,
-            " / ",
-            labels.length,
-            " \u2014 ",
-            labels[step]),
-        React.createElement(AscentProgress, { labels: labels, currentIndex: step }),
-        React.createElement("div", { className: "ihc-card" },
-            step === 0 && (React.createElement(React.Fragment, null,
-                React.createElement("h2", { className: "ihc-q-title" }, "Quel type d'habitation souhaitez-vous r\u00E9nover ?"),
-                React.createElement("p", { className: "ihc-q-sub" }, "Cela nous aide \u00E0 calibrer les postes de travaux pertinents."),
-                React.createElement("div", { className: "ihc-grid3" }, config.habitationTypes.map((h) => (React.createElement("button", { key: h.id, className: "ihc-opt" + (habitationType === h.id ? " selected" : ""), onClick: () => setHabitationType(h.id), "aria-pressed": habitationType === h.id },
-                    React.createElement(Building2, { size: 22, color: habitationType === h.id ? "var(--clay)" : "var(--ink-soft)" }),
-                    React.createElement("span", { className: "ihc-opt-label" }, h.label))))))),
-            step === 1 && (React.createElement(React.Fragment, null,
-                React.createElement("h2", { className: "ihc-q-title" }, "Quelles pi\u00E8ces souhaitez-vous r\u00E9nover ?"),
-                React.createElement("p", { className: "ihc-q-sub" }, "Indiquez le nombre de pi\u00E8ces de chaque type et leur surface totale approximative (m\u00B2) \u2014 une valeur par d\u00E9faut est propos\u00E9e, ajustez-la si besoin."),
-                React.createElement("div", null, config.pieceTypes.map((p) => {
-                    const val = pieceSel[p.id] || { count: 0, surface: 0 };
-                    return (React.createElement("div", { key: p.id, className: "ihc-piece-row" },
-                        React.createElement("div", { className: "ihc-piece-name" }, p.label),
-                        React.createElement("div", { className: "ihc-stepper" },
-                            React.createElement("button", { type: "button", "aria-label": `Retirer une pièce ${p.label}`, onClick: () => {
-                                    const nc = clamp((val.count || 0) - 1, 0, 20);
-                                    updatePiece(p.id, { count: nc, surface: nc === 0 ? 0 : Math.max(1, val.surface || nc * p.avgSurface) });
-                                } }, "\u2013"),
-                            React.createElement("span", { "aria-live": "polite" }, val.count || 0),
-                            React.createElement("button", { type: "button", "aria-label": `Ajouter une pièce ${p.label}`, onClick: () => {
-                                    const nc = clamp((val.count || 0) + 1, 0, 20);
-                                    const defaultSurface = val.surface ? val.surface + p.avgSurface : nc * p.avgSurface;
-                                    updatePiece(p.id, { count: nc, surface: Math.max(1, defaultSurface) });
-                                } }, "+")),
-                        React.createElement("input", { className: "ihc-surf-input", type: "number", min: "1", step: "1", disabled: !val.count, placeholder: "Surface m\u00B2", "aria-label": `Surface totale pour ${p.label}`, value: val.count ? (val.surface ?? "") : "", onChange: (e) => updatePiece(p.id, { surface: Math.max(0, Number(e.target.value)) }), onBlur: (e) => { if (val.count && !Number(e.target.value))
-                                updatePiece(p.id, { surface: p.avgSurface * val.count }); } })));
-                })))),
-            step === 2 && (React.createElement(React.Fragment, null,
-                React.createElement("h2", { className: "ihc-q-title" }, "Quel niveau de finition visez-vous ?"),
-                React.createElement("p", { className: "ihc-q-sub" }, "Trois altitudes, trois niveaux de gamme \u2014 appliqu\u00E9s \u00E0 l'ensemble des postes chiffr\u00E9s."),
-                React.createElement("div", { className: "ihc-tier-grid" }, config.tiers.map((t) => (React.createElement("button", { key: t.id, className: "ihc-tier" + (tierId === t.id ? " selected" : ""), onClick: () => setTierId(t.id), "aria-pressed": tierId === t.id },
-                    React.createElement("div", { className: "ihc-tier-alt" }, t.altitude),
-                    React.createElement("div", { className: "ihc-tier-mtn" },
-                        React.createElement(MountainGlyph, { peak: t.peak, active: tierId === t.id })),
-                    React.createElement("div", { className: "ihc-tier-name" }, t.label),
-                    React.createElement("div", { className: "ihc-tier-tag" }, t.tagline),
-                    React.createElement("div", { className: "ihc-tier-desc" }, t.description))))))),
-            step === 3 && (React.createElement(React.Fragment, null,
-                React.createElement("h2", { className: "ihc-q-title" }, "Quels postes souhaitez-vous chiffrer ?"),
-                React.createElement("p", { className: "ihc-q-sub" }, "Pr\u00E9-s\u00E9lectionn\u00E9s selon vos pi\u00E8ces \u2014 d\u00E9cochez ce qui ne vous concerne pas."),
-                applicablePostes().length > 0 && (React.createElement("div", { className: "ihc-select-all-row" },
-                    React.createElement("button", { type: "button", onClick: () => selectAllPostes(true) }, "Tout s\u00E9lectionner"),
-                    React.createElement("span", { style: { color: "var(--line)" } }, "\u00B7"),
-                    React.createElement("button", { type: "button", onClick: () => selectAllPostes(false) }, "Tout d\u00E9s\u00E9lectionner"))),
-                React.createElement("div", null,
-                    applicablePostes().map((poste) => {
-                        const on = posteSel[poste.id] !== false;
-                        return (React.createElement("div", { key: poste.id, className: "ihc-poste-row" },
-                            React.createElement("button", { type: "button", className: "ihc-check" + (on ? " on" : ""), onClick: () => setPosteSel((s) => ({ ...s, [poste.id]: !on })), "aria-pressed": on, "aria-label": poste.label }, on && React.createElement(Check, { size: 13 })),
-                            React.createElement("div", null,
-                                React.createElement("div", { className: "ihc-poste-label" }, poste.label),
-                                React.createElement("div", { className: "ihc-poste-meta" }, UNIT_LABEL[poste.unit]))));
-                    }),
-                    applicablePostes().length === 0 && React.createElement("div", { style: { fontSize: 13, color: "var(--ink-soft)" } }, "S\u00E9lectionnez au moins une pi\u00E8ce \u00E0 l'\u00E9tape pr\u00E9c\u00E9dente."))))),
-        React.createElement("div", { className: "ihc-nav-wrap" },
-            React.createElement("div", { className: "ihc-nav" },
-                React.createElement("button", { className: "btn btn-ghost", onClick: prev },
-                    React.createElement(ArrowLeft, { size: 16 }),
-                    " ",
-                    step === 0 ? "Annuler" : "Précédent"),
-                React.createElement("button", { className: "btn btn-primary", disabled: !canNext[step], onClick: next, title: !canNext[step] ? helpWhenBlocked[step] : undefined },
-                    step === labels.length - 1 ? "Voir mon estimation" : "Suivant",
-                    " ",
-                    React.createElement(ArrowRight, { size: 16 }))),
-            !canNext[step] && helpWhenBlocked[step] && (React.createElement("div", { style: { textAlign: "right", fontSize: 11.5, color: "var(--ink-soft)", marginTop: 6 } }, helpWhenBlocked[step]))))));
 /* ================================ RESULT =================================== */
 function ResultView({ estimate, leadSubmitted, onAskCallback, onRestart }) {
     return (React.createElement("div", { className: "ihc-shell" },
@@ -2028,6 +2031,6 @@ function AdminSettings({ config, setConfig, setPasswordHash, flashToast }) {
 /* ------------------------------ Bootstrap ---------------------------------
    Montage de l'application dans <div id="root"> (voir index.html)
    ============================================================================ */
-console.log("%cID'Home Création — build 2026-08-23-h", "color:#9C4420; font-weight:bold; font-size:13px;");
+console.log("%cID'Home Création — build 2026-08-23-i-hotfix", "color:#9C4420; font-weight:bold; font-size:13px;");
 const rootEl = document.getElementById("root");
 ReactDOM.createRoot(rootEl).render(React.createElement(App, null));
